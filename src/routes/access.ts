@@ -1,40 +1,71 @@
-import { FastifyInstance } from "fastify";
+import { FastifyInstance, FastifyRequest } from "fastify";
 import {
     checkAccess,
     grantAccess,
-    revokeAccess
+    revokeAccess,
 } from "../services/accessService";
 
+type AccessBody = {
+    user_id: string;
+    resource: string;
+    expires_at?: string;
+};
+
 export async function accessRoutes(app: FastifyInstance) {
+    // CHECK ACCESS
+    app.post(
+        "/access/check",
+        async (request: FastifyRequest<{ Body: AccessBody }>, reply) => {
+            const { user_id, resource } = request.body;
+            const projectId = (request as any).projectId;
 
-    app.post("/access/check", async (request) => {
-        const { user_id, resource } = request.body as any;
-        const projectId = (request as any).projectId;
+            if (!user_id || !resource) {
+                reply.code(400).send({ error: "Missing user_id or resource" });
+                return;
+            }
 
-        return checkAccess(projectId, user_id, resource);
-    });
+            return checkAccess(projectId, user_id, resource);
+        }
+    );
 
-    app.post("/access/grant", async (request) => {
-        const { user_id, resource, expires_at } = request.body as any;
-        const projectId = (request as any).projectId;
+    // GRANT ACCESS
+    app.post(
+        "/access/grant",
+        async (request: FastifyRequest<{ Body: AccessBody }>, reply) => {
+            const { user_id, resource, expires_at } = request.body;
+            const projectId = (request as any).projectId;
 
-        await grantAccess(
-            projectId,
-            user_id,
-            resource,
-            expires_at ? new Date(expires_at) : undefined
-        );
+            if (!user_id || !resource) {
+                reply.code(400).send({ error: "Missing user_id or resource" });
+                return;
+            }
 
-        return { granted: true };
-    });
+            await grantAccess(
+                projectId,
+                user_id,
+                resource,
+                expires_at ? new Date(expires_at) : undefined
+            );
 
-    app.post("/access/revoke", async (request) => {
-        const { user_id, resource } = request.body as any;
-        const projectId = (request as any).projectId;
+            return { granted: true };
+        }
+    );
 
-        await revokeAccess(projectId, user_id, resource);
+    // REVOKE ACCESS
+    app.post(
+        "/access/revoke",
+        async (request: FastifyRequest<{ Body: AccessBody }>, reply) => {
+            const { user_id, resource } = request.body;
+            const projectId = (request as any).projectId;
 
-        return { revoked: true };
-    });
+            if (!user_id || !resource) {
+                reply.code(400).send({ error: "Missing user_id or resource" });
+                return;
+            }
 
+            await revokeAccess(projectId, user_id, resource);
+
+            return { revoked: true };
+        }
+    );
 }
