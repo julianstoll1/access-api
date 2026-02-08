@@ -1,4 +1,5 @@
 import { FastifyRequest, FastifyReply } from "fastify";
+import { db } from "./db";
 
 export async function apiKeyAuth(
     request: FastifyRequest,
@@ -13,12 +14,21 @@ export async function apiKeyAuth(
 
     const apiKey = authHeader.replace("Bearer ", "");
 
-    // MVP: hardcoded key
-    if (apiKey !== "test_key") {
+    const result = await db.query(
+        `
+    select project_id
+    from api_keys
+    where key = $1
+      and is_active = true
+    `,
+        [apiKey]
+    );
+
+    if (result.rowCount === 0) {
         reply.code(401).send({ error: "Invalid API key" });
         return;
     }
 
     // Projekt-Kontext setzen
-    (request as any).projectId = "project_test";
+    (request as any).projectId = result.rows[0].project_id;
 }

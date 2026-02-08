@@ -1,14 +1,5 @@
+import { db } from "../lib/db";
 import { AccessCheckResult } from "../types/access";
-
-type Grant = {
-    projectId: string;
-    user_id: string;
-    resource: string;
-    expires_at?: Date;
-};
-
-// 🚧 In-memory Store (MVP)
-const grants: Grant[] = [];
 
 // CHECK
 export async function checkAccess(
@@ -17,22 +8,25 @@ export async function checkAccess(
     resource: string
 ): Promise<AccessCheckResult> {
 
-    const grant = grants.find(
-        g =>
-            g.projectId === projectId &&
-            g.user_id === user_id &&
-            g.resource === resource
+    const result = await db.query(
+        `
+            select 1
+            from access_grants
+            where project_id = $1
+              and user_id = $2
+              and resource = $3
+              and (
+                expires_at is null
+                    or expires_at > now()
+                )
+                limit 1
+        `,
+        [projectId, user_id, resource]
     );
 
-    if (!grant) {
-        return { access: false };
-    }
-
-    if (grant.expires_at && grant.expires_at < new Date()) {
-        return { access: false };
-    }
-
-    return { access: true };
+    return {
+        access: result.rows.length > 0
+    };
 }
 
 // GRANT (idempotent)
@@ -42,24 +36,21 @@ export async function grantAccess(
     resource: string,
     expires_at?: Date
 ) {
-    const existing = grants.find(
-        g =>
-            g.projectId === projectId &&
-            g.user_id === user_id &&
-            g.resource === resource
+    await db.query(
+        `
+            insert into access_grants (
+                project_id,
+                user_id,
+                resource,
+                expires_at
+            )
+            values ($1, $2, $3, $4)
+                on conflict (project_id, user_id, resource)
+    do update set
+                expires_at = excluded.expires_at
+        `,
+        [projectId, user_id, resource, expires_at ?? null]
     );
-
-    if (existing) {
-        existing.expires_at = expires_at;
-        return;
-    }
-
-    grants.push({
-        projectId,
-        user_id,
-        resource,
-        expires_at
-    });
 }
 
 // REVOKE (idempotent)
@@ -68,14 +59,13 @@ export async function revokeAccess(
     user_id: string,
     resource: string
 ) {
-    const index = grants.findIndex(
-        g =>
-            g.projectId === projectId &&
-            g.user_id === user_id &&
-            g.resource === resource
+    await db.query(
+        `
+            delete from access_grants
+            where project_id = $1
+              and user_id = $2
+              and resource = $3
+        `,
+        [projectId, user_id, resource]
     );
-
-    if (index !== -1) {
-        grants.splice(index, 1);
-    }
 }
