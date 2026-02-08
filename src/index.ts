@@ -15,6 +15,6 @@ app.register(accessRoutes);
 // Healthcheck
 app.get("/health", async () => ({ ok: true }));
 
-app.listen({ port: 3000 }, () => {
+app.listen({ port: 3001 }, () => {
     console.log("Access API running on http://localhost:3000");
 });
