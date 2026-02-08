@@ -1,7 +1,11 @@
 import Fastify from "fastify";
 import { accessRoutes } from "./routes/access";
+import { apiKeyAuth } from "./lib/auth";
 
 const app = Fastify({ logger: true });
+
+// 🔐 API-Key Middleware (WICHTIG)
+app.addHook("preHandler", apiKeyAuth);
 
 app.register(accessRoutes);
 
