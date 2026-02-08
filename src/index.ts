@@ -1,3 +1,5 @@
+import "dotenv/config";
+import { db } from "./lib/db";
 import Fastify from "fastify";
 import { accessRoutes } from "./routes/access";
 import { apiKeyAuth } from "./lib/auth";
