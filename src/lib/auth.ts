@@ -37,5 +37,6 @@ export async function apiKeyAuth(
     }
 
     // ✅ Projekt-Kontext an Request hängen
-    (request as any).projectId = result.rows[0].project_id;
+    (request as FastifyRequest & { projectId?: string }).projectId =
+        result.rows[0].project_id;
 }
